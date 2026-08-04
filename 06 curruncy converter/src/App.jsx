@@ -60,7 +60,7 @@ function App() {
                                 swap
                             </button>
                         </div>
-                        <div className="w-full mt-1 mb-4">
+                        <div className="w-full mt-1 mb-4"> 
                             <InputBox
                                 label="To"
                                 amount={convertedAmount}
