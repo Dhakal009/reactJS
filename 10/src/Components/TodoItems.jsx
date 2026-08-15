@@ -1,7 +1,20 @@
-import React from 'react'
+import React, { useState } from 'react'
+import { useTodo } from '../Context';
 
 function TodoItem({ todo }) {
-    
+
+    const [isTodoEditable, setIsTodoEditable] = useState(false)
+    const [todoMsg, setTodoMsg] = useState(todo.todo)
+    const { updateTodo, deleteTodo, toggleComplete } = useTodo()
+
+    const editTodo = () => {
+        updateTodo(todo.id, { ...todo, todo: todoMsg })
+        setIsTodoEditable(false)
+    }
+
+    const toggleCompleted = () => {
+        toggleComplete(todo.id)
+    }
 
     return (
         <div
@@ -32,9 +45,11 @@ function TodoItem({ todo }) {
 
                     if (isTodoEditable) {
                         editTodo();
-                    } else setIsTodoEditable((prev) => !prev);
+                    } else {
+                        setIsTodoEditable(true);
+                    }
                 }}
-                disabled={todo.completed}   
+                disabled={todo.completed}
             >
                 {isTodoEditable ? "📁" : "✏️"}
             </button>
@@ -50,6 +65,3 @@ function TodoItem({ todo }) {
 }
 
 export default TodoItem;
-
-
-export default TodoItems
