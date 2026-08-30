@@ -1,11 +1,13 @@
 import React from 'react'
 import Header from '../others/Header'
+import TaskListNumber from '../others/TaskListNumber'
 function EmployeeDashboard() {
   return (
-    <div className='px-10 py-15 bg-[#1CC1C] h-screen' >
+    <div className='text-white px-10 py-15 bg-[#1C1C1C] h-screen' >
     <Header/>
+    <TaskListNumber/>
     </div>
   )
 }
 
-export default EmployeeDashboard
+export default EmployeeDashboard 
