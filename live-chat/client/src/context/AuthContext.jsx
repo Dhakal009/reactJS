@@ -30,8 +30,8 @@ function AuthProvider({children}){
             setuser(response.data.user)
 
         }catch(err){
-            console.error(err)
-            logout();
+            console.error("GET CURRENT USER ERROR:", err)
+            // logout();
         }
     }
 

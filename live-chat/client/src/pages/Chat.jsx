@@ -1,18 +1,47 @@
 import { useContext, useEffect, useState } from "react";
 import { AuthContext } from "../context/AuthContext";
 import api from "../services/api";
+import { io } from "socket.io-client";
+
+
+const socket = io("http://localhost:5000",{
+  withCredentials:true,
+  transpots:["websocket"],
+});
 
 function Chat() {
   const { user, token } = useContext(AuthContext);
 
   const [users, setUsers] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null);
+  const [conversation, setConversation] = useState(null)
+  const [messages, setMessages] = useState([])
+  const [newMessage, setNewMessage] = useState("")
 
   useEffect(() => {
     if (token) {
       getUsers();
     }
   }, [token]);
+
+  useEffect(() => {
+    if(conversation?._id && token){
+      getMessages(conversation._id)
+    }
+  }, [conversation,token])
+  
+  useEffect(()=>{
+    socket.connect();
+
+    socket.on("connect",()=>{
+      console.log("Connected to socket server:", socket.id);
+    })
+
+    return () =>{
+      socket.disconnect();
+    }
+  },[])
+
 
   const getUsers = async () => {
     try {
@@ -27,6 +56,78 @@ function Chat() {
       console.error(error);
     }
   };
+
+  const createConversation = async (userId) =>{
+    try{
+      const response = await api.post(
+      "/conversations/",
+      {
+        userId: userId 
+      },
+      {
+        headers:{
+          Authorization:`Bearer ${token}`
+        }
+      }
+    )
+
+    setConversation(response.data.conversation)
+    
+    }
+    catch(err){
+      console.error(err)
+    }
+
+  }
+
+  const getMessages = async (conversationId)=>{
+    try{
+      const response = await api.get(
+        `/messages/${conversationId}`,
+        {
+          headers:{
+            Authorization:`Bearer ${token}`
+          }
+        }
+      )
+
+      console.log("Fetched messages:", response.data)
+
+    setMessages(response.data.message || [])
+    }
+    catch(err){
+      console.error(err);
+      setMessages([])
+    }
+  }
+
+  const sendMessage = async (e) =>{
+      e.preventDefault()
+      try{
+          if(!newMessage.trim() || !conversation?._id) return;
+          else{
+            const response = await api.post(
+              "/messages/",
+              {
+                conversationId: conversation._id,
+                text: newMessage
+              },
+              {
+                headers:{
+                  Authorization:`Bearer ${token}`
+                }
+              }
+            )
+
+            setMessages(prev => [...prev,response.data.newMessage])
+            setNewMessage("")
+          }
+      }
+      catch(err){
+        console.error(err)
+      }
+
+  }
 
   return (
     <div className="h-screen bg-zinc-950 text-white flex">
@@ -50,9 +151,9 @@ function Chat() {
 
             {/* Current user avatar */}
             <div className="w-10 h-10 rounded-full bg-indigo-600 flex items-center justify-center font-semibold">
-             {user?.ProfilePicture ? (
+             {user?.profilePicture ? (
                 <img
-                  src={user.ProfilePicture}
+                  src={user.profilePicture}
                   alt="Profile"
                   className="w-full h-full rounded-full object-cover"
                 />
@@ -83,7 +184,11 @@ function Chat() {
 
             <button
               key={item._id}
-              onClick={() => setSelectedUser(item)}
+              onClick={() => {
+                setSelectedUser(item)
+                createConversation(item._id)
+              }
+              }
               className={`w-full flex items-center gap-3 p-3 rounded-xl text-left transition ${
                 selectedUser?._id === item._id
                   ? "bg-zinc-800"
@@ -174,25 +279,47 @@ function Chat() {
 
 
             {/* Messages area */}
-            <div className="flex-1 flex items-center justify-center bg-zinc-950">
-
-              <div className="text-center">
-
-                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-zinc-900 flex items-center justify-center text-2xl">
-                  💬
+            {messages.length === 0 ? (
+              <div className="flex-1 flex items-center justify-center bg-zinc-950">
+                <div className="text-center">
+                  <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-zinc-900 flex items-center justify-center text-2xl">
+                    💬
+                  </div>
+                  <h3 className="text-lg font-medium">Start a conversation</h3>
+                  <p className="text-sm text-zinc-500 mt-1">
+                    Send a message to {selectedUser.name}
+                  </p>
                 </div>
-
-                <h3 className="text-lg font-medium">
-                  Start a conversation
-                </h3>
-
-                <p className="text-sm text-zinc-500 mt-1">
-                  Send a message to {selectedUser.name}
-                </p>
-
               </div>
+            ) : (
+              <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3 bg-zinc-950">
+                {messages.map((msg) => {
+                  const senderId = msg.sender?._id || msg.sender;
+                  const isMine = senderId === user?._id;
 
-            </div>
+                  return (
+                    <div
+                      key={msg._id}
+                      className={`flex ${isMine ? "justify-end" : "justify-start"}`}
+                    >
+                      <div
+                        className={`max-w-[70%] rounded-2xl px-4 py-2 ${
+                          isMine ? "bg-indigo-600 text-white" : "bg-zinc-800 text-zinc-200"
+                        }`}
+                      >
+                        <p className="text-sm">{msg.text}</p>
+                        <span className="block mt-1 text-[10px] opacity-60 text-right">
+                          {new Date(msg.createdAt).toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
 
 
             {/* Message input */}
@@ -200,17 +327,22 @@ function Chat() {
 
               <div className="flex gap-3">
 
-                <input
+                <form onSubmit={sendMessage} className="flex-1 flex gap-3">
+                  <input
                   type="text"
+                  value={newMessage}
+                  onChange={(e) => setNewMessage(e.target.value)}
                   placeholder={`Message ${selectedUser.name}...`}
                   className="flex-1 bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3 outline-none focus:border-indigo-500 placeholder:text-zinc-500"
                 />
 
                 <button
+                  type="submit"
                   className="px-5 rounded-xl bg-indigo-600 hover:bg-indigo-500 transition font-medium"
                 >
                   Send
                 </button>
+                </form>
 
               </div>
 

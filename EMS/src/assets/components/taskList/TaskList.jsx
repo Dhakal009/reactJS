@@ -1,19 +1,31 @@
 import React from 'react'
+import AcceptTask from './AcceptTask'
+import CompleteTask from './CompleteTask'
+import NewTask from './NewTask'
+import FailTask from './FailTask'
 
-function TaskList() {
+function TaskList({data}) {
+  if (!data || !Array.isArray(data.tasks)) {
+    return (
+      <div id="taskList" className="h-80 flex items-center justify-center w-full py-5 mt-10">
+        <p className="text-gray-400">No tasks available</p>
+      </div>
+    )
+  }
+
   return (
-    <div id='tasklist' className='h-[60%] overflow-x-auto flex items-center justify-start gap-5 flex-nowrap w-full py-5  mt-10'>
-      <div className='flex-shrink-0 h-full w-85 bg-red-400 rounded-xl p-5'>
-          <div className='flex justify-between items-center'>
-              <h3 className='bg-red-600 text-sm px-3 py-1 rounded'>High</h3>
-              <h4 className='text-sm'>20 feb 2024</h4>
-          </div>  
-          <h2 className='mt-5 text-2xl font-semibold'>Learn React</h2>
-          <p className='text-sm mt-5'>
-            Lorem ipsum dolor sit amet consectetur, adipisicing elit. Saepe ut omnis autem, molestias repellat reprehenderit quis aperiam, vero velit dolorem amet minus libero rerum recusandae.
-          </p>
-      </div>    
-      
+    <div
+      id='taskList'
+      className="h-80 overflow-x-auto flex items-center justify-start gap-5 flex-nowrap w-full py-5 mt-10"
+    >
+      {data.tasks.map((e, idx)=>{
+        if(e.active) return <AcceptTask key={idx} data={e}/>
+        if(e.newTask) return  <NewTask key={idx} data={e}/>
+        if(e.completed) return  <CompleteTask key={idx} data={e} />
+        if(e.failed)  return <FailTask key={idx} data={e} />
+        return null
+      })}
+
     </div>
   )
 }
