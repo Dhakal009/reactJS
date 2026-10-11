@@ -9,6 +9,7 @@ import authRoutes from "./routes/authRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
 import conversationRouter from "./routes/conversationRoutes.js";
 import messageRouter from "./routes/messageRoutes.js";
+import User from "./models/User.js";
 
 dotenv.config();
 
@@ -32,11 +33,38 @@ const io = new Server(server, {
   },
 });
 
-io.on("connection", (socket) => {
-  console.log("User connected:", socket.id);
+const onlineUsers = new Map();
 
-  socket.on("disconnect", () => {
+io.on("connection", (socket) => {
+  socket.on("userConnected", (userId) => {
+    onlineUsers.set(userId, socket.id);
+    console.log("Online users:", Array.from(onlineUsers.keys()));
+    io.emit("onlineUsers", Array.from(onlineUsers.keys()));
+  });
+
+
+  socket.on("joinRoom", (conversationId) => {
+    socket.join(conversationId);
+    console.log(`User joined room: ${conversationId}`);
+  })
+
+  socket.on("sendMessage", (data) => {
+    socket.to(data.conversationId).emit("newMessage",data);
+  });
+
+  socket.on ("disconnect", async () => {
     console.log("User disconnected:", socket.id);
+
+
+    if(socket.userId){
+      onlineUsers.delete(socket.userId);
+      io.emit("onlineUsers", Array.from(onlineUsers.keys()));
+      await User.findByIdAndUpdate(socket.userId, { isOnline: false });
+    }
+  });
+  
+  socket.on("typing", (data) => {
+    socket.to(data.conversationId).emit("typing", data);
   });
 });
 

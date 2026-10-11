@@ -35,18 +35,40 @@ function AuthProvider({children}){
         }
     }
 
-    const login = (token,user)=>{
-        localStorage.setItem("token",token);
+    const login = async (email,password)=>{
+        try{
 
-        settoken(token);
-        setuser(user);
+            const response = await api.post("/auth/login",{email,password});
+            localStorage.setItem("token",response.data.token);
+            settoken(response.data.token);
+            setuser(response.data.user);
+            return true;
+
+        }
+        catch(err){
+            console.error("Login failded",err);
+            return false;
+        }
     };
 
-    const logout = ()=>{
-        localStorage.removeItem("token")
+    const register = async (name,email,password)=>{
+        try{
+            const response = await api.post("/auth/register",{name,email,password});
+            localStorage.setItem("token",response.data.token);
+            settoken(response.data.token);
+            setuser(response.data.user);
+            return true;
+        }
+        catch(err){
+            console.error("Register failded",err);
+            return false;
+        }
+    }
 
-        settoken(null)
-        setuser(null)
+    const logout = ()=>{
+        localStorage.removeItem("token");
+        settoken(null);
+        setuser(null);
     }
 
 
@@ -56,6 +78,7 @@ function AuthProvider({children}){
                 user,
                 token,
                 login,
+                register,
                 logout
             }}
         >
